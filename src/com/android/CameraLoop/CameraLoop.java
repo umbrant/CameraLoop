@@ -80,17 +80,19 @@ class TimerSnap extends TimerTask implements Camera.PictureCallback {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		// Upload to the local server
-		// TODO: actually do this!
+		// Upload to the server for processing
+		String response = (new HTTPUpload()).serverResponseMessage();
+		System.out.println(response);
 		
 		// Kick off the appropriately long pi calculation
-		MonteCarloPi mpi = new MonteCarloPi();
+		Timer t1 = new Timer("mpi", true);
+		t1.schedule(new MonteCarloPi(), 0);
 		
 		// Restart camera preview
 		myCamera.startPreview();
 		// Start timer
-		Timer t = new Timer("snap", true);
-		t.schedule(new TimerSnap(myContext, myCamera), 1000);
+		Timer t2 = new Timer("snap", true);
+		t2.schedule(new TimerSnap(myContext, myCamera), 1000);
 		
 	}
 }
@@ -155,13 +157,14 @@ class MonteCarloPi extends TimerTask {
 class HTTPUpload {
 	int serverResponseCode;
 	String serverResponseMessage;
-	public HTTPUpload(String filepath) {
+	
+	public HTTPUpload() {
 		HttpURLConnection connection = null;
 		DataOutputStream outputStream = null;
 		DataInputStream inputStream = null;
 
-		String pathToOurFile = filepath; //"/data/file_to_send.mp3";
-		String urlServer = "http://192.168.1.1/handle_upload.php";
+		String pathToOurFile = "image.jpg"; //"/data/file_to_send.mp3";
+		String urlServer = "http://127.0.0.1/handle_upload.php";
 		String lineEnd = "\r\n";
 		String twoHyphens = "--";
 		String boundary =  "*****";
@@ -214,7 +217,7 @@ class HTTPUpload {
 		// Responses from the server (code and message)
 		serverResponseCode = connection.getResponseCode();
 		serverResponseMessage = connection.getResponseMessage();
-
+				
 		fileInputStream.close();
 		outputStream.flush();
 		outputStream.close();
@@ -250,7 +253,6 @@ class Preview extends SurfaceView implements SurfaceHolder.Callback {
 		try {
 			myCamera.setPreviewDisplay(holder);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
