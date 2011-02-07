@@ -1,6 +1,5 @@
 package com.android.CameraLoop;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,6 +20,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -55,11 +55,16 @@ class TimerSnap extends TimerTask implements Camera.PictureCallback {
 	Camera myCamera;
 	Context myContext;
 	static int counter = 0;
+	static Timer t1;
+	static Timer t2;
+	
 	public TimerSnap(Context con, Camera c) {
 		super();
 		myCamera = c;
 		myContext = con;
 		counter += 1;
+		t1 = new Timer("mpi");
+		t2 = new Timer("snap");
 	}
 
 	@Override
@@ -81,17 +86,16 @@ class TimerSnap extends TimerTask implements Camera.PictureCallback {
 			e.printStackTrace();
 		}
 		// Upload to the server for processing
-		String response = (new HTTPUpload()).serverResponseMessage();
-		System.out.println(response);
+		Log.d("onPic", "Attempting upload...");
+		String response = (new HTTPUpload(myContext)).serverResponseMessage;
+		Log.d("onPic", "Response msg: " + response);
 		
 		// Kick off the appropriately long pi calculation
-		Timer t1 = new Timer("mpi", true);
-		t1.schedule(new MonteCarloPi(), 0);
+		t1.schedule(new MonteCarloPi(10000), 0);
 		
 		// Restart camera preview
 		myCamera.startPreview();
 		// Start timer
-		Timer t2 = new Timer("snap", true);
 		t2.schedule(new TimerSnap(myContext, myCamera), 1000);
 		
 	}
@@ -131,16 +135,18 @@ class DrawOnTop extends View {
 class MonteCarloPi extends TimerTask {
 	
 	Random rand;
+	int iterations;
 	
-	public MonteCarloPi() {
+	public MonteCarloPi(int iter) {
 		rand = new Random();
+		iterations = iter;
 	}
 	
 	@Override
 	public void run() {
 		int inside, outside;
 		inside = outside = 0;
-		for(int i=0; i<Global.pi_iterations; i++) {
+		for(int i=0; i<iterations; i++) {
 			float x = rand.nextFloat();
 			float y = rand.nextFloat();
 			if(Math.sqrt( Math.pow(x-0.5,2) + Math.pow(y-0.5, 2)) > 0.5) {
@@ -149,7 +155,8 @@ class MonteCarloPi extends TimerTask {
 				inside += 1;
 			}
 		}
-		Global.pi = (inside / outside) * 4;
+		Global.pi = (inside / (iterations)) * 4;
+		Log.d("MonteCarloPi", "Pi was calculated as " + Double.toString(Global.pi));
 	}
 }
 
@@ -158,13 +165,12 @@ class HTTPUpload {
 	int serverResponseCode;
 	String serverResponseMessage;
 	
-	public HTTPUpload() {
+	public HTTPUpload(Context context) {
 		HttpURLConnection connection = null;
 		DataOutputStream outputStream = null;
-		DataInputStream inputStream = null;
 
 		String pathToOurFile = "image.jpg"; //"/data/file_to_send.mp3";
-		String urlServer = "http://127.0.0.1/handle_upload.php";
+		//String urlServer = "http://127.0.0.1:8080/upload";
 		String lineEnd = "\r\n";
 		String twoHyphens = "--";
 		String boundary =  "*****";
@@ -175,9 +181,10 @@ class HTTPUpload {
 
 		try
 		{
-		FileInputStream fileInputStream = new FileInputStream(new File(pathToOurFile) );
+		FileInputStream fileInputStream = context.openFileInput(pathToOurFile);
+		
 
-		URL url = new URL(urlServer);
+		URL url = new URL("http", "127.0.0.1", 8080, "/upload");
 		connection = (HttpURLConnection) url.openConnection();
 
 		// Allow Inputs & Outputs
