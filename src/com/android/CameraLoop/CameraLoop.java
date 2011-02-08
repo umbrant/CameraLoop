@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.List;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -73,6 +74,9 @@ class TimerSnap extends TimerTask implements Camera.PictureCallback {
 	}
 
 	public void onPictureTaken(byte[] data, Camera camera) {
+		// Restart preview immediately
+		myCamera.startPreview();
+
 		// Write the file to local storage
 		String FILENAME = "image.jpg";
 		FileOutputStream fos = null;
@@ -173,7 +177,7 @@ class HTTPUpload {
 		DataOutputStream outputStream = null;
 
 		String pathToOurFile = "image.jpg"; // "/data/file_to_send.mp3";
-		String urlServer = "http://10.0.2.2:8080/upload";
+		String urlServer = "http://128.32.37.56:8080/upload";
 		String lineEnd = "\r\n";
 		String twoHyphens = "--";
 		String boundary = "*****";
@@ -183,10 +187,10 @@ class HTTPUpload {
 		int maxBufferSize = 1 * 1024 * 1024;
 
 		try {
-			// FileInputStream fileInputStream =
-			// context.openFileInput(pathToOurFile);
-			FileInputStream fileInputStream = new FileInputStream(new File(
-					"/sdcard/test1.jpg"));
+			FileInputStream fileInputStream =
+			 context.openFileInput(pathToOurFile);
+			//FileInputStream fileInputStream = new FileInputStream(new File(
+			//		"/sdcard/test1.jpg"));
 
 			URL url = new URL(urlServer);
 			connection = (HttpURLConnection) url.openConnection();
@@ -286,8 +290,15 @@ class Preview extends SurfaceView implements SurfaceHolder.Callback {
 	public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
 		// Now that the size is known, set up the camera parameters and begin
 		// the preview.
+		//Camera.Parameters parameters = myCamera.getParameters();
+		//parameters.setPreviewSize(w, h);
+		//myCamera.setParameters(parameters);
+		//myCamera.startPreview();
+		
 		Camera.Parameters parameters = myCamera.getParameters();
-		parameters.setPreviewSize(w, h);
+		List<Camera.Size> sizes = parameters.getSupportedPreviewSizes();
+		parameters.setPreviewSize(sizes.get(0).width, sizes.get(0).height);
+		//parameters.setFlashMode(Camera.Parameters.FLASH_MODE_ON);
 		myCamera.setParameters(parameters);
 		myCamera.startPreview();
 
