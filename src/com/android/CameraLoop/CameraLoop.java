@@ -20,6 +20,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.hardware.Camera;
 import android.os.Bundle;
@@ -129,7 +130,7 @@ class DrawOnTop extends View {
 		paint.setAntiAlias(true);
 
 		// Draw a rectangle
-		Rect r = new Rect(40, 250, 440, 370);
+		Rect r = new Rect(227, 170, 627, 310);
 		paint.setTextSize(28);
 		// canvas.drawText(text, 10, 40, paint);
 		canvas.drawRect(r, paint);
@@ -271,6 +272,7 @@ class Preview extends SurfaceView implements SurfaceHolder.Callback {
 	public void surfaceCreated(SurfaceHolder holder) {
 		// The Surface has been created, acquire the camera and tell it where
 		// to draw.
+
 		myCamera = Camera.open();
 		try {
 			myCamera.setPreviewDisplay(holder);
@@ -284,23 +286,28 @@ class Preview extends SurfaceView implements SurfaceHolder.Callback {
 		// Because the CameraDevice object is not a shared resource, it's very
 		// important to release it when the activity is paused.
 		myCamera.stopPreview();
+		myCamera.release();
 		myCamera = null;
 	}
 
 	public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
 		// Now that the size is known, set up the camera parameters and begin
 		// the preview.
-		//Camera.Parameters parameters = myCamera.getParameters();
-		//parameters.setPreviewSize(w, h);
-		//myCamera.setParameters(parameters);
-		//myCamera.startPreview();
 		
+	   Camera.Parameters parameters = myCamera.getParameters();
+	   parameters.setPreviewSize(w, h);
+	   parameters.setPictureFormat(PixelFormat.JPEG);
+	   parameters.setRotation(90);
+	   myCamera.setParameters(parameters);
+	   myCamera.startPreview();
+
+		/*
 		Camera.Parameters parameters = myCamera.getParameters();
 		List<Camera.Size> sizes = parameters.getSupportedPreviewSizes();
 		parameters.setPreviewSize(sizes.get(0).width, sizes.get(0).height);
-		//parameters.setFlashMode(Camera.Parameters.FLASH_MODE_ON);
 		myCamera.setParameters(parameters);
 		myCamera.startPreview();
+		*/
 
 		// Start timer
 		Timer t = new Timer("snap", true);
