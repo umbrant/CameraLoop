@@ -17,6 +17,8 @@ import java.util.TimerTask;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -33,6 +35,20 @@ import android.view.ViewGroup.LayoutParams;
 
 class Global {
 	static int camera_interval = 1000;
+	
+	// Actual pixel size of screen
+	static int screen_width = 854;
+	static int screen_height = 480;
+	
+	// Where to draw the view finder box
+	static int view_width = 360;
+	static int view_height = 120;
+	static int view_xoff = (screen_width-view_width)/2;
+	static int view_yoff = (screen_height-view_height)/2;
+	
+	// Size of image
+	public static int img_width = 0;
+	public static int img_height = 0;
 }
 
 public class CameraLoop extends Activity {
@@ -75,16 +91,38 @@ class TimerSnap extends TimerTask implements Camera.PictureCallback {
 	}
 
 	public void onPictureTaken(byte[] data, Camera camera) {
-		// Restart preview immediately
-		myCamera.startPreview();
 
 		// Write the file to local storage
 		String FILENAME = "image.jpg";
 		FileOutputStream fos = null;
 		try {
+			// Crop the image
+			Bitmap b = BitmapFactory.decodeByteArray(data, 0, data.length);
+			
+			float xoff, yoff, width, height;
+			xoff   = (float)Global.img_width  * (float)((float)Global.view_xoff   / (float)Global.screen_width);
+			yoff   = (float)Global.img_height * (float)((float)Global.view_yoff   / (float)Global.screen_height);
+			width  = (float)Global.img_width  * (float)((float)Global.view_width  / (float)Global.screen_width);
+			height = (float)Global.img_height * (float)((float)Global.view_height / (float)Global.screen_height);
+			
+			/* TODO: make the viewfinder actually show what's going to be taken
+			 * The dimensions of the image taken and the viewfinder are different,
+			 * so it messes up the cropping
+			 */
+			Bitmap cropped = Bitmap.createBitmap(b, (int)xoff, (int)yoff, (int)width, (int)height);
+			//Bitmap cropped = b;
+			
+			// Restart preview now that the image is read
+			myCamera.startPreview();
+			
+			// Upload cropped image
 			fos = myContext.openFileOutput(FILENAME, Context.MODE_PRIVATE);
-			fos.write(data);
+		    cropped.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+			//fos.write(data);
 			fos.close();
+			
+
+			
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -101,9 +139,6 @@ class TimerSnap extends TimerTask implements Camera.PictureCallback {
 
 		// Kick off the appropriately long pi calculation
 		t1.schedule(new MonteCarloPi(10000), 0);
-
-		// Restart camera preview
-		myCamera.startPreview();
 		// Start timer
 		t2.schedule(new TimerSnap(myContext, myCamera), 1000);
 
@@ -130,7 +165,8 @@ class DrawOnTop extends View {
 		paint.setAntiAlias(true);
 
 		// Draw a rectangle
-		Rect r = new Rect(227, 170, 627, 310);
+		Rect r = new Rect(Global.view_xoff, Global.view_yoff, 
+				Global.view_xoff + Global.view_width, Global.view_yoff + Global.view_height);
 		paint.setTextSize(28);
 		// canvas.drawText(text, 10, 40, paint);
 		canvas.drawRect(r, paint);
@@ -178,7 +214,7 @@ class HTTPUpload {
 		DataOutputStream outputStream = null;
 
 		String pathToOurFile = "image.jpg"; // "/data/file_to_send.mp3";
-		String urlServer = "http://128.32.37.56:8080/upload";
+		String urlServer = "http://128.32.44.167:8080/upload";
 		String lineEnd = "\r\n";
 		String twoHyphens = "--";
 		String boundary = "*****";
@@ -295,6 +331,11 @@ class Preview extends SurfaceView implements SurfaceHolder.Callback {
 		// the preview.
 		
 	   Camera.Parameters parameters = myCamera.getParameters();
+	   Camera.Size size = parameters.getPictureSize();
+	   
+	   Global.img_height = size.height;
+	   Global.img_width = size.width;
+	   
 	   parameters.setPreviewSize(w, h);
 	   parameters.setPictureFormat(PixelFormat.JPEG);
 	   parameters.setRotation(90);
